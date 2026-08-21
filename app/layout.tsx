@@ -4,7 +4,7 @@ import UmamiAnalytics from "../components/UmamiAnalytics";
 import "./globals.css";
 import "./polish.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://cdafair.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://cdafair.aerovista.us";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
