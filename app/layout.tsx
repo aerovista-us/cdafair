@@ -4,25 +4,36 @@ import UmamiAnalytics from "../components/UmamiAnalytics";
 import "./globals.css";
 import "./polish.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://cdafair.aerovista.us";
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://cdafair.aerovista.us").replace(/\/$/, "");
+const socialImage = `${siteUrl}/opengraph-image`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "CDA Fair Day | Unofficial North Idaho State Fair Companion",
   description: "Today's North Idaho State Fair deal, schedule, parking, prices, directions and a quick fair-day planner.",
-  alternates: { canonical: "/" },
+  alternates: { canonical: siteUrl },
+  robots: { index: true, follow: true },
   openGraph: {
     title: "Going to the Fair? Check this first 🎡",
     description: "Today's deal, what's happening, parking, prices and a quick Fair Day planner.",
     type: "website",
     locale: "en_US",
-    url: "/",
-    siteName: "CDA Fair Day"
+    url: siteUrl,
+    siteName: "CDA Fair Day",
+    images: [
+      {
+        url: socialImage,
+        width: 1200,
+        height: 630,
+        alt: "CDA Fair Day — Going to the Fair? Check this first."
+      }
+    ]
   },
   twitter: {
     card: "summary_large_image",
     title: "CDA Fair Day",
-    description: "Today's North Idaho State Fair info in one fast page."
+    description: "Today's North Idaho State Fair info in one fast page.",
+    images: [socialImage]
   }
 };
 
