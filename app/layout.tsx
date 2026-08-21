@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AeroVistaBranding from "../components/AeroVistaBranding";
 import UmamiAnalytics from "../components/UmamiAnalytics";
 import "./globals.css";
 import "./polish.css";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         {children}
+        <AeroVistaBranding />
         <UmamiAnalytics />
       </body>
     </html>
