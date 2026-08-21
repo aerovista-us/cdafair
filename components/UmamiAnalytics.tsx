@@ -1,8 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import { flushQueuedEvents } from "../lib/analytics";
 
 const DEFAULT_UMAMI_URL = "https://stats.aerocoreos.com";
+
+function hostAllowed(hostname: string, domains: string[]) {
+  if (!domains.length) return true;
+  const host = hostname.toLowerCase();
+  return domains.some((domain) => {
+    const normalized = domain.toLowerCase();
+    if (normalized === host) return true;
+    if (normalized.startsWith(".")) return host.endsWith(normalized);
+    return false;
+  });
+}
 
 export default function UmamiAnalytics() {
   useEffect(() => {
@@ -12,7 +24,7 @@ export default function UmamiAnalytics() {
     const url = (process.env.NEXT_PUBLIC_UMAMI_URL || DEFAULT_UMAMI_URL).replace(/\/$/, "");
     const allowedDomains = (process.env.NEXT_PUBLIC_UMAMI_DOMAINS || "")
       .split(",")
-      .map((value) => value.trim().toLowerCase())
+      .map((value) => value.trim())
       .filter(Boolean);
 
     const { hostname, protocol, search } = window.location;
@@ -20,8 +32,14 @@ export default function UmamiAnalytics() {
     if (protocol === "file:") return;
     if (["localhost", "127.0.0.1", "::1"].includes(hostname)) return;
     if (new URLSearchParams(search).get("no_analytics") === "1") return;
-    if (allowedDomains.length && !allowedDomains.includes(hostname.toLowerCase())) return;
-    if (document.querySelector("script[data-cdafair-umami]")) return;
+    if (!hostAllowed(hostname, allowedDomains)) return;
+
+    const existing = document.querySelector<HTMLScriptElement>("script[data-cdafair-umami]");
+    if (existing) {
+      if (window.umami) flushQueuedEvents();
+      else existing.addEventListener("load", flushQueuedEvents, { once: true });
+      return;
+    }
 
     const script = document.createElement("script");
     script.async = true;
@@ -29,6 +47,7 @@ export default function UmamiAnalytics() {
     script.src = `${url}/script.js`;
     script.setAttribute("data-website-id", websiteId);
     script.setAttribute("data-cdafair-umami", "true");
+    script.addEventListener("load", flushQueuedEvents, { once: true });
 
     if (allowedDomains.length) {
       script.setAttribute("data-domains", allowedDomains.join(","));
