@@ -49,7 +49,10 @@ export default function UmamiAnalytics() {
     script.setAttribute("data-cdafair-umami", "true");
     script.addEventListener("load", flushQueuedEvents, { once: true });
 
-    if (allowedDomains.length) {
+    // Umami's native domain attribute is useful for exact hosts, but suffix
+    // guards (for example .vercel.app) are enforced by hostAllowed above.
+    const exactDomainsOnly = allowedDomains.length > 0 && allowedDomains.every((domain) => !domain.startsWith("."));
+    if (exactDomainsOnly) {
       script.setAttribute("data-domains", allowedDomains.join(","));
     }
 
