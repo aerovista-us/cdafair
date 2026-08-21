@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import UmamiAnalytics from "@/components/UmamiAnalytics";
+import UmamiAnalytics from "../components/UmamiAnalytics";
 import "./globals.css";
 
 export const metadata: Metadata = {
