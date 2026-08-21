@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { trackEvent } from "../lib/analytics";
 
 type Category = "family" | "rides" | "animals" | "shows" | "music" | "motorsports" | "livestock";
 type EventItem = { time: string; title: string; category: Category; featured?: boolean; ticketed?: boolean };
@@ -22,27 +23,31 @@ const tabs: { id: Tab; label: string; icon: string }[] = [
 
 const events: EventItem[] = [
   { time: "9:00 AM", title: "ADGA Goat Show", category: "livestock" },
-  { time: "2:00 PM", title: "Fair gates open + afternoon activities", category: "family", featured: true },
+  { time: "2:00 PM", title: "Fair gates open · train rides, Kid Zone, pony rides, Butterfly Haven + more", category: "family", featured: true },
   { time: "2:15 PM", title: "The Farmer's Daughter Show + The Junebugs", category: "shows" },
   { time: "2:30 PM", title: "Vuelta La Luna Circus + One Man Band", category: "shows" },
-  { time: "3:00 PM", title: "Carnival opens", category: "rides", featured: true },
-  { time: "3:30 PM", title: "Sea Lion Splash + Juggling with Jeremiah", category: "animals", featured: true },
-  { time: "4:00 PM", title: "Grand Opening Ceremony", category: "family", featured: true },
-  { time: "4:30 PM", title: "America's 250 Celebration", category: "family" },
-  { time: "5:00 PM", title: "Improv Comedy by Levity Theatre", category: "shows" },
-  { time: "6:00 PM", title: "Sea Lion Splash", category: "animals" },
-  { time: "6:30 PM", title: "Motocross", category: "motorsports", featured: true, ticketed: true },
+  { time: "3:00 PM", title: "Carnival opens + Kootenai Fire CPR Demo", category: "rides", featured: true },
+  { time: "3:30 PM", title: "Sea Lion Splash + Juggling with Jeremiah + Second Hand Band", category: "animals", featured: true },
+  { time: "4:00 PM", title: "Grand Opening Ceremony + Kootenai Fire CPR Demo", category: "family", featured: true },
+  { time: "4:30 PM", title: "America's 250 Celebration + Anthony Ray + One Man Band", category: "family" },
+  { time: "5:00 PM", title: "Improv Comedy + Mirror Man + The Junebugs", category: "shows" },
+  { time: "5:30 PM", title: "Juggling with Jeremiah", category: "shows" },
+  { time: "6:00 PM", title: "Sea Lion Splash + Porter Combs", category: "animals" },
+  { time: "6:15 PM", title: "The Real McCoy", category: "music" },
+  { time: "6:30 PM", title: "Motocross + One Man Band + Vuelta La Luna Circus", category: "motorsports", featured: true, ticketed: true },
+  { time: "7:00 PM", title: "Mirror Man", category: "shows" },
+  { time: "7:30 PM", title: "Juggling with Jeremiah", category: "shows" },
   { time: "8:00 PM", title: "Music on the Midway + Fair Family Movie Night", category: "music", featured: true },
-  { time: "9:00 PM", title: "Tyzen — Master Hypnotist", category: "shows" }
+  { time: "9:00 PM", title: "Juggling with Jeremiah + Tyzen — Master Hypnotist", category: "shows" }
 ];
 
 const tomorrow = [
   "9:00 AM · GSSS Sheep Show",
-  "11:00 AM · GSSS Swine Show",
-  "12:00 PM · Best Mullet Contest",
-  "1:00 PM · Sea Lion Splash",
+  "11:00 AM · GSSS Swine Show + Kid Zone + Pony Rides",
+  "12:00 PM · Best Mullet Contest + ARBA Judging",
+  "1:00 PM · Sea Lion Splash + Train Rides + Meat Goat Show",
   "2:30 PM · KCSO K-9 Demo",
-  "6:30 PM · Motocross",
+  "6:30 PM · Motocross + Vuelta La Luna Circus",
   "8:00 PM · Music on the Midway + Fair Family Movie Night"
 ];
 
@@ -50,6 +55,7 @@ const promoDays = [
   ["Fri 21", "FREE admission until 4 PM"],
   ["Sat 22", "First 5,000 guests get a free return admission ticket"],
   ["Sun 23", "FREE until 3 PM with 5 canned food items"],
+  ["Mon 24", "$1 from each admission before 3 PM supports local mental-health awareness"],
   ["Tue 25", "Ages 60+ FREE 11 AM–3 PM"],
   ["Wed 26", "FREE admission until 3 PM"],
   ["Thu 27", "FREE until 3 PM with coat donation"],
@@ -78,11 +84,16 @@ function cdaMinutesNow() {
   return h * 60 + m;
 }
 
+function validTab(value: string): value is Tab {
+  return tabs.some(tab => tab.id === value);
+}
+
 export default function Home() {
-  const now = cdaMinutesNow();
+  const [now, setNow] = useState(cdaMinutesNow());
   const foundNext = events.findIndex(e => minutes(e.time) >= now);
-  const nextIndex = foundNext === -1 ? events.length - 1 : foundNext;
-  const nextEvent = events[nextIndex];
+  const nextEvent = foundNext === -1 ? null : events[foundNext];
+  const isOpen = now >= 14 * 60 && now < 22 * 60;
+  const freeWindowActive = now < 16 * 60;
 
   const [activeTab, setActiveTab] = useState<Tab>("today");
   const [audience, setAudience] = useState("Family");
@@ -91,18 +102,41 @@ export default function Home() {
   const [built, setBuilt] = useState(false);
 
   useEffect(() => {
-    const applyHash = () => {
-      const hash = window.location.hash.replace("#", "") as Tab;
-      if (tabs.some(tab => tab.id === hash)) setActiveTab(hash);
-    };
-    applyHash();
-    window.addEventListener("hashchange", applyHash);
-    return () => window.removeEventListener("hashchange", applyHash);
+    const timer = window.setInterval(() => setNow(cdaMinutesNow()), 60_000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  function selectTab(tab: Tab) {
+  useEffect(() => {
+    const readEntry = (source: string) => {
+      const hash = window.location.hash.replace("#", "");
+      const tab: Tab = validTab(hash) ? hash : "today";
+      setActiveTab(tab);
+
+      const params = new URLSearchParams(window.location.search);
+      let referrerHost = "direct";
+      if (document.referrer) {
+        try { referrerHost = new URL(document.referrer).hostname || "direct"; } catch { referrerHost = "unknown"; }
+      }
+
+      trackEvent(source === "landing" ? "journey_start" : "tab_view", {
+        tab,
+        source: params.get("utm_source") || source,
+        campaign: params.get("utm_campaign") || "none",
+        content: params.get("utm_content") || "none",
+        referrer_host: referrerHost
+      });
+    };
+
+    readEntry("landing");
+    const onHashChange = () => readEntry("browser_hash");
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  function selectTab(tab: Tab, source: string) {
+    trackEvent("tab_view", { from: activeTab, tab, source });
     setActiveTab(tab);
-    window.history.replaceState(null, "", `#${tab}`);
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${tab}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -131,53 +165,76 @@ export default function Home() {
       .sort((a, b) => a.index - b.index);
   }, [audience, duration, interest, now]);
 
+  function buildPlan() {
+    setBuilt(true);
+    trackEvent("planner_generate", {
+      audience,
+      duration,
+      interest,
+      result_count: plan.length
+    });
+  }
+
   async function sharePlan() {
     const text = `Our CDA Fair Day: ${plan.map(e => `${e.time} ${e.title}`).join(" · ")}`;
-    const url = `${window.location.origin}${window.location.pathname}#my-day`;
-    if (navigator.share) await navigator.share({ title: "CDA Fair Day", text, url });
-    else {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      alert("Fair plan copied to clipboard.");
+    const url = `${window.location.origin}${window.location.pathname}?utm_source=share&utm_medium=referral&utm_campaign=cdafair_plan#my-day`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "CDA Fair Day", text, url });
+        trackEvent("planner_share", { method: "native", result_count: plan.length });
+      } catch {
+        trackEvent("planner_share_cancel", { method: "native" });
+      }
+      return;
     }
+
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    trackEvent("planner_share", { method: "clipboard", result_count: plan.length });
+    alert("Fair plan copied to clipboard.");
   }
 
   return (
     <main className="app">
       <header className="compactHero">
         <nav className="topbar">
-          <button className="brandButton" onClick={() => selectTab("today")}><span>🎡</span> CDA FAIR DAY</button>
-          <a href={OFFICIAL} target="_blank" rel="noreferrer">Official Fair ↗</a>
+          <button className="brandButton" onClick={() => selectTab("today", "brand")} aria-label="CDA Fair Day home"><span>🎡</span> CDA FAIR DAY</button>
+          <TrackedLink href={OFFICIAL} destination="official_home">Official Fair ↗</TrackedLink>
         </nav>
 
         <div className="heroContent">
           <div className="heroCopy">
-            <p className="eyebrow">OPENING DAY · FRIDAY, AUGUST 21</p>
+            <div className="liveLine">
+              <span className={isOpen ? "statusDot open" : "statusDot"}/>
+              <p className="eyebrow">{isOpen ? "OPEN NOW" : now < 14 * 60 ? "OPENS AT 2 PM" : "CLOSED FOR TONIGHT"} · FRIDAY, AUGUST 21</p>
+            </div>
             <h1>Your fair day.<br/><span>Without the digging.</span></h1>
           </div>
 
           <div className="heroStatus">
-            <div className="dealMini">
-              <small>TODAY'S DEAL</small>
-              <strong>FREE UNTIL 4 PM</strong>
-              <span>Gates 2–10 PM · Carnival 3 PM</span>
-            </div>
-            <button className="nextMini" onClick={() => selectTab("today")}>
-              <small>NEXT UP</small>
-              <strong>{nextEvent.time}</strong>
-              <span>{nextEvent.title}</span>
+            <button className="dealMini" onClick={() => selectTab("deals", "hero_deal")}>
+              <small>{freeWindowActive ? "TODAY'S DEAL" : "DEALS + PRICES"}</small>
+              <strong>{freeWindowActive ? "FREE UNTIL 4 PM" : "CHECK TODAY'S SAVINGS"}</strong>
+              <span>{freeWindowActive ? "Opening-day general admission · tap for details" : "The free-entry window ended at 4 PM · see current prices"}</span>
+            </button>
+            <button className="nextMini" onClick={() => selectTab(nextEvent ? "today" : "info", "hero_next")}>
+              <small>{nextEvent ? "NEXT UP" : "TODAY'S PROGRAM WRAPPED"}</small>
+              <strong>{nextEvent ? nextEvent.time : "Tomorrow"}</strong>
+              <span>{nextEvent ? nextEvent.title : "See Saturday's highlights"}</span>
             </button>
           </div>
         </div>
       </header>
 
-      <nav className="desktopTabs" aria-label="Fair guide sections">
+      <nav className="desktopTabs" aria-label="Fair guide sections" role="tablist">
         <div className="tabInner">
           {tabs.map(tab => (
             <button
               key={tab.id}
               className={activeTab === tab.id ? "tab active" : "tab"}
-              onClick={() => selectTab(tab.id)}
+              onClick={() => selectTab(tab.id, "desktop_nav")}
               aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
               role="tab"
             >
               <span>{tab.icon}</span>{tab.label}
@@ -188,23 +245,24 @@ export default function Home() {
 
       <div className="shell tabShell">
         {activeTab === "today" && (
-          <section className="tabPage" id="today" aria-label="Today">
+          <section className="tabPage" id="panel-today" aria-label="Today" role="tabpanel">
             <div className="quickGrid compactQuick">
               <Quick icon="🕑" label="Gates" value="2–10 PM"/>
               <Quick icon="🎡" label="Carnival" value="3 PM–Close"/>
-              <Quick icon="🚗" label="Parking" value="$7" onClick={() => selectTab("info")}/>
-              <Quick icon="📍" label="Directions" value="Government Way" href={MAPS}/>
+              <Quick icon="🚗" label="Parking" value="$7" onClick={() => selectTab("info", "today_parking")}/>
+              <Quick icon="📍" label="Directions" value="Government Way" href={MAPS} destination="directions"/>
             </div>
 
             <section className="panel primaryPanel">
               <Heading eyebrow="TODAY" title="What's happening" link={EVENTS}/>
+              <p className="scheduleNote">A fast summary of today's program. The official schedule remains the source of truth for late changes.</p>
               <div className="timeline">
                 {events.map((event, i) => (
-                  <div className={`event ${i === nextIndex ? "next" : ""}`} key={`${event.time}-${event.title}`}>
+                  <div className={`event ${i === foundNext ? "next" : ""}`} key={`${event.time}-${event.title}`}>
                     <div className="time">{event.time}</div>
                     <div>
                       <div className="eventTitle">{event.title}{event.ticketed && <span className="pill">ticketed</span>}</div>
-                      <div className="meta">{event.featured ? "★ Highlight" : event.category}{i === nextIndex ? " · NEXT UP" : ""}</div>
+                      <div className="meta">{event.featured ? "★ Highlight" : event.category}{i === foundNext ? " · NEXT UP" : ""}</div>
                     </div>
                   </div>
                 ))}
@@ -214,14 +272,14 @@ export default function Home() {
         )}
 
         {activeTab === "my-day" && (
-          <section className="tabPage" id="my-day" aria-label="My Day">
+          <section className="tabPage" id="panel-my-day" aria-label="My Day" role="tabpanel">
             <section className="panel planner primaryPanel">
               <Heading eyebrow="MAKE IT YOURS" title="Build My Fair Day"/>
               <p className="sectionIntro">Tell us what kind of day you want. We'll prioritize the strongest matches from today's remaining schedule.</p>
               <Choice label="Who's going?" values={["Family", "Adults", "Date", "Kids"]} current={audience} set={setAudience}/>
               <Choice label="How long?" values={["2 Hours", "4 Hours", "All Day"]} current={duration} set={setDuration}/>
               <Choice label="Main vibe?" values={["Rides", "Animals", "Shows", "Music", "Motorsports"]} current={interest} set={setInterest}/>
-              <button className="primary make" onClick={() => setBuilt(true)}>MAKE MY PLAN</button>
+              <button className="primary make" onClick={buildPlan}>MAKE MY PLAN</button>
 
               {built && (
                 <div className="result">
@@ -237,16 +295,20 @@ export default function Home() {
               )}
             </section>
 
-            <button className="crossLink" onClick={() => selectTab("today")}>
+            <button className="crossLink" onClick={() => selectTab("today", "planner_schedule_link")}>
               <span><small>NEED THE FULL LIST?</small><strong>Browse today's schedule</strong></span><b>→</b>
             </button>
           </section>
         )}
 
         {activeTab === "deals" && (
-          <section className="tabPage" id="deals" aria-label="Deals">
+          <section className="tabPage" id="panel-deals" aria-label="Deals" role="tabpanel">
             <section className="dealBanner">
-              <div><p className="eyebrow">TODAY'S BEST MOVE</p><h2>Get through the gate before 4 PM.</h2><p>Opening-day general admission is free until 4 PM.</p></div>
+              <div>
+                <p className="eyebrow">{freeWindowActive ? "TODAY'S BEST MOVE" : "OPENING DAY"}</p>
+                <h2>{freeWindowActive ? "Get through the gate before 4 PM." : "The free-entry window has ended."}</h2>
+                <p>{freeWindowActive ? "Opening-day general admission is free until 4 PM." : "You can still compare gate and online pricing below."}</p>
+              </div>
               <span>🎟️</span>
             </section>
 
@@ -272,12 +334,12 @@ export default function Home() {
         )}
 
         {activeTab === "info" && (
-          <section className="tabPage" id="info" aria-label="Fair Info">
+          <section className="tabPage" id="panel-info" aria-label="Fair Info" role="tabpanel">
             <div className="infoGrid">
-              <InfoAction icon="📍" title="Directions" detail="4056 N. Government Way" href={MAPS}/>
-              <InfoAction icon="🚗" title="Parking" detail="$7 per vehicle" href={PARKING}/>
-              <InfoAction icon="🕑" title="Hours" detail="Today · 2–10 PM" href={HOURS}/>
-              <InfoAction icon="🎟️" title="Official Fair" detail="Tickets, updates + notices" href={OFFICIAL}/>
+              <InfoAction icon="📍" title="Directions" detail="4056 N. Government Way" href={MAPS} destination="directions"/>
+              <InfoAction icon="🚗" title="Parking" detail="$7 per vehicle" href={PARKING} destination="parking"/>
+              <InfoAction icon="🕑" title="Hours" detail="Today · 2–10 PM" href={HOURS} destination="hours"/>
+              <InfoAction icon="🎟️" title="Official Fair" detail="Tickets, updates + notices" href={OFFICIAL} destination="official_home"/>
             </div>
 
             <section className="panel primaryPanel">
@@ -289,11 +351,11 @@ export default function Home() {
               <strong>Unofficial community guide.</strong>
               <p>Information is summarized from the North Idaho State Fair's public website and can change. Verify time-sensitive details with the official Fair before making plans.</p>
               <div className="links">
-                <a href={EVENTS} target="_blank" rel="noreferrer">Events ↗</a>
-                <a href={ADMISSION} target="_blank" rel="noreferrer">Admission ↗</a>
-                <a href={HOURS} target="_blank" rel="noreferrer">Hours ↗</a>
-                <a href={PARKING} target="_blank" rel="noreferrer">Parking ↗</a>
-                <a href={MAPS} target="_blank" rel="noreferrer">Directions ↗</a>
+                <TrackedLink href={EVENTS} destination="events">Events ↗</TrackedLink>
+                <TrackedLink href={ADMISSION} destination="admission">Admission ↗</TrackedLink>
+                <TrackedLink href={HOURS} destination="hours">Hours ↗</TrackedLink>
+                <TrackedLink href={PARKING} destination="parking">Parking ↗</TrackedLink>
+                <TrackedLink href={MAPS} destination="directions">Directions ↗</TrackedLink>
               </div>
             </section>
           </section>
@@ -302,9 +364,16 @@ export default function Home() {
         <footer>Made in Coeur d'Alene · AeroVista</footer>
       </div>
 
-      <nav className="bottomTabs" aria-label="Fair guide sections">
+      <nav className="bottomTabs" aria-label="Fair guide sections" role="tablist">
         {tabs.map(tab => (
-          <button key={tab.id} className={activeTab === tab.id ? "active" : ""} onClick={() => selectTab(tab.id)}>
+          <button
+            key={tab.id}
+            className={activeTab === tab.id ? "active" : ""}
+            onClick={() => selectTab(tab.id, "mobile_nav")}
+            aria-selected={activeTab === tab.id}
+            aria-controls={`panel-${tab.id}`}
+            role="tab"
+          >
             <span>{tab.icon}</span><small>{tab.label}</small>
           </button>
         ))}
@@ -313,13 +382,26 @@ export default function Home() {
   );
 }
 
-function Heading({ eyebrow, title, link }: { eyebrow: string; title: string; link?: string }) {
-  return <div className="heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>{link && <a href={link} target="_blank" rel="noreferrer">Official source ↗</a>}</div>;
+function linkDestination(href: string) {
+  if (href === EVENTS) return "events";
+  if (href === ADMISSION) return "admission";
+  if (href === HOURS) return "hours";
+  if (href === PARKING) return "parking";
+  if (href === MAPS) return "directions";
+  return "official_home";
 }
 
-function Quick({ icon, label, value, href, onClick }: { icon: string; label: string; value: string; href?: string; onClick?: () => void }) {
+function TrackedLink({ href, destination, className, children }: { href: string; destination: string; className?: string; children: ReactNode }) {
+  return <a className={className} href={href} target="_blank" rel="noreferrer" onClick={() => trackEvent("outbound_click", { destination })}>{children}</a>;
+}
+
+function Heading({ eyebrow, title, link }: { eyebrow: string; title: string; link?: string }) {
+  return <div className="heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>{link && <TrackedLink href={link} destination={linkDestination(link)}>Official source ↗</TrackedLink>}</div>;
+}
+
+function Quick({ icon, label, value, href, destination, onClick }: { icon: string; label: string; value: string; href?: string; destination?: string; onClick?: () => void }) {
   const body = <><span className="qicon">{icon}</span><small>{label}</small><strong>{value}</strong></>;
-  if (href) return <a className="quick" href={href} target="_blank" rel="noreferrer">{body}</a>;
+  if (href) return <TrackedLink className="quick" href={href} destination={destination || linkDestination(href)}>{body}</TrackedLink>;
   if (onClick) return <button className="quick quickButton" onClick={onClick}>{body}</button>;
   return <div className="quick">{body}</div>;
 }
@@ -332,6 +414,6 @@ function Choice({ label, values, current, set }: { label: string; values: string
   return <div className="choice"><label>{label}</label><div>{values.map(v => <button key={v} className={v === current ? "active" : ""} onClick={() => set(v)}>{v}</button>)}</div></div>;
 }
 
-function InfoAction({ icon, title, detail, href }: { icon: string; title: string; detail: string; href: string }) {
-  return <a className="infoAction" href={href} target="_blank" rel="noreferrer"><span>{icon}</span><div><strong>{title}</strong><small>{detail}</small></div><b>↗</b></a>;
+function InfoAction({ icon, title, detail, href, destination }: { icon: string; title: string; detail: string; href: string; destination: string }) {
+  return <TrackedLink className="infoAction" href={href} destination={destination}><span>{icon}</span><div><strong>{title}</strong><small>{detail}</small></div><b>↗</b></TrackedLink>;
 }
