@@ -1,0 +1,33 @@
+import { trackEvent } from "./analytics";
+
+export function buildReferralUrl(baseUrl: string, campaign: string, destinationHash?: string) {
+  const url = new URL(baseUrl);
+  url.searchParams.set("utm_source", "share");
+  url.searchParams.set("utm_medium", "referral");
+  url.searchParams.set("utm_campaign", campaign);
+  if (destinationHash) url.hash = destinationHash.replace(/^#/, "");
+  return url.toString();
+}
+
+export async function shareUtility({ title, text, url, campaign }: { title: string; text: string; url: string; campaign: string }) {
+  const trackedUrl = buildReferralUrl(url, campaign);
+
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      await navigator.share({ title, text, url: trackedUrl });
+      trackEvent("share", { method: "native" });
+      return { shared: true, method: "native" as const };
+    } catch {
+      trackEvent("share_cancel", { method: "native" });
+      return { shared: false, method: "native" as const };
+    }
+  }
+
+  if (typeof navigator !== "undefined" && navigator.clipboard) {
+    await navigator.clipboard.writeText(`${text}\n${trackedUrl}`);
+    trackEvent("share", { method: "clipboard" });
+    return { shared: true, method: "clipboard" as const };
+  }
+
+  return { shared: false, method: "unavailable" as const };
+}
