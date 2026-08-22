@@ -1,0 +1,31 @@
+import { ImageResponse } from "next/og";
+
+export const runtime = "edge";
+export const alt = "APP NAME";
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
+
+const APP_NAME = "APP NAME";
+const APP_TAGLINE = "ONE-LINE VALUE PROPOSITION";
+const APP_DETAIL = "FAST · LOCAL · USEFUL";
+
+export default function Image() {
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 72px", background: "radial-gradient(circle at 85% 20%, #173a52 0%, #12131a 38%, #080a0f 72%)", color: "#f7f7f2", fontFamily: "Arial, sans-serif" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", fontSize: 27, fontWeight: 800, letterSpacing: "0.06em" }}>{APP_NAME}</div>
+          <div style={{ display: "flex", fontSize: 20, color: "#ffb23f", fontWeight: 700 }}>AEROVISTA LOCAL</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", maxWidth: 960 }}>
+          <div style={{ display: "flex", fontSize: 24, color: "#ffb23f", fontWeight: 800, letterSpacing: "0.08em", marginBottom: 18 }}>{APP_DETAIL}</div>
+          <div style={{ display: "flex", fontSize: 78, lineHeight: 0.96, fontWeight: 900, letterSpacing: "-0.045em" }}>{APP_TAGLINE}</div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,.18)", paddingTop: 28, fontSize: 20, color: "#aeb3bd" }}>
+          <span>Made in Coeur d'Alene</span><span>AeroVista</span>
+        </div>
+      </div>
+    ),
+    size
+  );
+}
