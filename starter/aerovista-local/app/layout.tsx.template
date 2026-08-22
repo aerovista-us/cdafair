@@ -1,0 +1,42 @@
+import type { Metadata } from "next";
+import AeroVistaLocalBadge from "../components/AeroVistaLocalBadge";
+import UmamiAnalytics from "../components/UmamiAnalytics";
+import "./globals.css";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.aerovista.us";
+const APP_NAME = "APP NAME";
+const APP_DESCRIPTION = "APP DESCRIPTION";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: APP_NAME,
+  description: APP_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: APP_NAME,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: APP_NAME }]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    images: ["/opengraph-image"]
+  }
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <AeroVistaLocalBadge />
+        <UmamiAnalytics />
+      </body>
+    </html>
+  );
+}
