@@ -1,0 +1,52 @@
+"use client";
+
+import { trackEvent } from "../lib/analytics";
+
+const HOME = "https://aerovista.us/";
+
+export default function AeroVistaLocalBadge({ toolSlug = process.env.NEXT_PUBLIC_TOOL_SLUG || "local-tool" }: { toolSlug?: string }) {
+  const href = `${HOME}?utm_source=${encodeURIComponent(toolSlug)}&utm_medium=referral&utm_campaign=local_tools&utm_content=brand_badge`;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="AeroVista Local — Built in Coeur d'Alene"
+      onClick={() => trackEvent("brand_click", { placement: "persistent_badge", destination: "aerovista" })}
+      style={{
+        position: "fixed",
+        right: 14,
+        bottom: "calc(14px + env(safe-area-inset-bottom))",
+        zIndex: 45,
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        padding: "9px 12px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,.11)",
+        background: "rgba(12,15,21,.86)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        boxShadow: "0 8px 28px rgba(0,0,0,.28)",
+        color: "#f7f7f2",
+        textDecoration: "none",
+        fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+      }}
+      className="aerovistaLocalBadge"
+    >
+      <span aria-hidden="true" style={{ width: 25, height: 25, display: "grid", placeItems: "center", borderRadius: 8, border: "1px solid rgba(255,178,63,.28)", color: "#ffb23f", fontSize: 11, fontWeight: 900 }}>AV</span>
+      <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.05 }}>
+        <strong style={{ fontSize: 11, letterSpacing: ".055em", textTransform: "uppercase" }}>AeroVista Local</strong>
+        <small style={{ marginTop: 4, color: "#8f97a4", fontSize: 9 }}>Built in Coeur d'Alene · ↗</small>
+      </span>
+      <style jsx>{`
+        .aerovistaLocalBadge { transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+        .aerovistaLocalBadge:hover,.aerovistaLocalBadge:focus-visible { border-color: rgba(255,178,63,.38) !important; background: rgba(18,21,29,.96) !important; transform: translateY(-1px); outline: none; }
+        @media (max-width:760px) { .aerovistaLocalBadge { right:10px !important; bottom:calc(78px + env(safe-area-inset-bottom)) !important; padding:7px 9px !important; } }
+        @media (max-width:390px) { .aerovistaLocalBadge small { display:none; } }
+        @media (prefers-reduced-motion:reduce) { .aerovistaLocalBadge { transition:none !important; } }
+      `}</style>
+    </a>
+  );
+}
