@@ -46,16 +46,22 @@ An app is launch-ready when:
 9. Facebook launch copy is ready.
 10. One post-launch improvement backlog exists.
 
+## Shared starter status
+
+**Implemented.** The reusable starter now lives at `starter/aerovista-local/` and contains:
+
+- canonical metadata/OpenGraph pattern
+- Umami loader + safe event queue
+- AeroVista Local persistent brand signature
+- clean share/referral helper
+- source/disclaimer component
+- production-domain environment contract
+- pre-launch checklist
+
+The starter intentionally excludes CDA Fair Day's event schedule, Fair-specific navigation, colors, and business logic. Each utility should keep its own product identity while inheriting the common AeroVista Local launch foundation.
+
 ## Architecture recommendation
 
-Keep each public utility in its own repository and Vercel project, but standardize a small reusable AeroVista Local starter that contains:
+Keep each public utility in its own repository and Vercel project. Start each new repository from `starter/aerovista-local/`, then add only the utility-specific data model, UI, sources, and actions required for that product.
 
-- metadata/OpenGraph pattern
-- Umami loader + event queue
-- AeroVista Local brand signature
-- share/referral helper
-- mobile navigation primitives
-- source/disclaimer components
-- production-domain environment contract
-
-CDA Fair Day is the current reference implementation for those shared pieces.
+CDA Fair Day remains the reference implementation; the extracted starter is now the preferred starting point for Lake Day and every utility after it.
