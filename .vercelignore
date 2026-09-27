@@ -1,0 +1,9 @@
+# Repository-only material
+README.md
+docs/
+starter/
+
+# Legacy static artwork is not referenced by the app.
+# Social previews are generated dynamically at /opengraph-image.
+public/fairday_logo.png
+public/fairday_preview.png
